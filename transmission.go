@@ -18,15 +18,19 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/facebookgo/muster"
+	dynsampler "github.com/honeycombio/dynsampler-go"
+	libhoney "github.com/honeycombio/libhoney-go"
 )
 
 // Output is responsible for handling events after Send() is called.
@@ -340,6 +344,114 @@ func buildReqReader(jsonEncoded []byte) (io.Reader, bool) {
 // nower to make testing easier
 type nower interface {
 	Now() time.Time
+}
+
+// DynSampledOutput implements the Output interface and applies a dynamic
+// sampling algorithm to events before sending them off to the wrapped Output.
+// It must be configured with a list of fields to use to influence the
+// dynsampling algorithm.
+//
+// It wraps another Output interface - if one is not configured it will wrap the
+// default Output that sends to Honeycomb. If configured with something like the
+// WriterOutput it will sample before handing it off to that output for further
+// handling. This gives you an opportunity to understand what the sampling
+// algorithm will do in non-production environments.
+//
+// Make sure to set all the options (the Output to wrap, the sample rate and
+// blocking prefs, etc.) before starting this Output.  You may adjust the
+// `FieldList` at runtime after having started the Output.
+type DynSampledOutput struct {
+	FieldList []string
+
+	WrappedOutput  Output
+	GoalSampleRate uint
+	DynWindowSec   uint
+
+	BlockOnSend      bool
+	BlockOnResponses bool
+
+	sampler *dynsampler.Sampler
+}
+
+func (d *DynSampledOutput) Start() error {
+	if d.WrappedOutput == nil {
+		d.WrappedOutput = &txDefaultClient{
+			blockOnSend:      d.BlockOnSend,
+			blockOnResponses: d.BlockOnResponses,
+		}
+	}
+	// set up some defaults
+	if d.GoalSampleRate == 0 {
+		d.GoalSampleRate = 1
+	}
+	if d.DynWindowSec == 0 {
+		d.DynWindowSec = 30
+	}
+	// spin up dynsampler
+	d.sampler = &dynsampler.AvgSampleRate{
+		GoalSampleRate:    d.GoalSampleRate,
+		ClearFrequencySec: d.DynWindowSec,
+	}
+	if err := d.sampler.Start(); err != nil {
+		return fmt.Errorf("DynSampledOutput dynsampler failed to start: %s", err)
+	}
+
+	return d.WrappedOutput.Start()
+}
+
+func (d *DynSampledOutput) Stop() error {
+	return d.WrappedOutput.Stop()
+}
+
+func (d *DynSampledOutput) Add(ev *Event) {
+	// apply sampling
+	key := makeDynsampleKey(ev, d.FieldList)
+	sr := d.sampler.GetSampleRate(key)
+	if rand.Intn(sr) != 0 {
+		// drop due to sampling
+		r := Response{
+			Err:      errors.New("event dropped due to sampling"),
+			Metadata: ev.Metadata,
+		}
+		d.enqueueResponse(r)
+	} else {
+		d.WrappedOutput.Add(ev)
+	}
+}
+
+func (d *DynSampledOutput) enqueueResponse(r Response) {
+	if d.BlockOnResponses {
+		responses <- r
+	} else {
+		select {
+		case responses <- r:
+		default: // drop on the floor
+		}
+	}
+}
+
+// makeDynsampleKey pulls in all the values necessary from the event to create a
+// key for dynamic sampling
+func makeDynsampleKey(ev *libhoney.Event, fields []string) string {
+	key := make([]string, len(fields))
+	evFields := ev.Fields()
+	for i, field := range fields {
+		if val, ok := evFields[field]; ok {
+			switch val := val.(type) {
+			case bool:
+				key[i] = strconv.FormatBool(val)
+			case int64:
+				key[i] = strconv.FormatInt(val, 10)
+			case float64:
+				key[i] = strconv.FormatFloat(val, 'E', -1, 64)
+			case string:
+				key[i] = val
+			default:
+				key[i] = "" // skip it
+			}
+		}
+	}
+	return strings.Join(key, "_")
 }
 
 // WriterOutput implements the Output interface by marshalling events to JSON
