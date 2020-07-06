@@ -1047,3 +1047,83 @@ func startFakeServer(t testing.TB, assumeEventCount int) *httptest.Server {
 
 	return httptest.NewServer(http.HandlerFunc(handler))
 }
+
+func TestMarshalEvent(t *testing.T) {
+	time, err := time.Parse("2006-01-02T15:04:05.000Z", "2020-06-23 15:30:34.65 +0000 UTC")
+	client, err := NewClient(ClientConfig{})
+
+	e := &Event{
+		WriteKey:   "ceb6e474a807a40b45060e50b6b1e4c0",
+		Dataset:    "traces - staging",
+		SampleRate: 1,
+		APIHost:    "https://api.honeycomb.io",
+		Timestamp:  time,
+		Metadata:   nil,
+		client:     client,
+		sent:       true,
+		fieldHolder: fieldHolder{
+			data: marshallableMap{
+				"child_span_count":                    nil,
+				"duration_ms":                         0.369,
+				"has_remote_parent":                   true,
+				"http.host":                           "172.23.87.232",
+				"http.method":                         "GET",
+				"http.path":                           "/status-check",
+				"http.route":                          "/status-check",
+				"http.status_code":                    200,
+				"http.user_agent":                     "kube-probe/1.16+",
+				"ip":                                  "172.23.87.232",
+				"name":                                "/status-check",
+				"opencensus.exporter.jaeger.hostname": "my-deliveries-fragment-fragment-6dc7cff7cd-qsqmv",
+				"opencensus.exporter.jaeger.version":  "opencensus-exporter-jaeger-[object Object]",
+				"release - version":                   "6.1984.0",
+				"service_name":                        "my-deliveries-fragment",
+				"source_format":                       "otlp_trace",
+				"status.code":                         0,
+				"status.message":                      "OK",
+				"trace.parent_id":                     "8d7ab34566589fc1",
+				"trace.span_id:":                      "1baea5d6da1c4888",
+				"trace.trace_id:":                     "7d9d40b0769c19658d7ab34566589fc1",
+				"lock":                                "{w:{state:0 sema:0} writerSem:0 readerSem:0 readerCount:0 readerWait:0}",
+			},
+			// lock: sync.Mutex,
+		},
+		// sendLock:   sync.Mutex,
+	}
+
+	marshalled, err := json.Marshal(e)
+	testOK(t, err)
+	fmt.Println(string(marshalled))
+}
+
+// WriteKey:ceb6e474a807a40b45060e50b6b1e4c0
+// Dataset:traces-staging
+// SampleRate:1
+// APIHost:https://api.honeycomb.io
+// Timestamp:2020-06-23 15:30:34.651 +0000 UTC
+// Metadata:<nil>
+// fieldHolder:{data:map[child_span_count:<nil>
+//  duration_ms:0.369
+//  has_remote_parent:true
+//  http.host:172.23.87.232
+//  http.method:GET
+//  http.path:/status-check
+//  http.route:/status-check
+//  http.status_code:200
+//  http.user_agent:kube-probe/1.16+
+//  ip:172.23.87.232
+//  name:/status-check
+//  opencensus.exporter.jaeger.hostname:my-deliveries-fragment-fragment-6dc7cff7cd-qsqmv
+//  opencensus.exporter.jaeger.version:opencensus-exporter-jaeger-[object Object]
+//  release-version:6.1984.0
+//  service_name:my-deliveries-fragment
+//  source_format:otlp_trace
+//  status.code:0
+//  status.message:OK
+//  trace.parent_id:8d7ab34566589fc1
+//  trace.span_id:1baea5d6da1c4888
+//  trace.trace_id:7d9d40b0769c19658d7ab34566589fc1]
+//  lock:{w:{state:0 sema:0} writerSem:0 readerSem:0 readerCount:0 readerWait:0}
+// client:0xc0000db680
+// sent:true
+// sendLock:{state:0 sema:0}}
