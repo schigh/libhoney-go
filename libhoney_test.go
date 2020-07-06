@@ -1049,8 +1049,8 @@ func startFakeServer(t testing.TB, assumeEventCount int) *httptest.Server {
 }
 
 func TestMarshalEvent(t *testing.T) {
-	time, err := time.Parse("2006-01-02T15:04:05.000Z", "2020-06-23 15:30:34.65 +0000 UTC")
-	client, err := NewClient(ClientConfig{})
+	time, _ := time.Parse("2006-01-02T15:04:05.000Z", "2020-06-23 15:30:34.65 +0000 UTC")
+	client, _ := NewClient(ClientConfig{})
 
 	e := &Event{
 		WriteKey:   "ceb6e474a807a40b45060e50b6b1e4c0",
@@ -1091,8 +1091,16 @@ func TestMarshalEvent(t *testing.T) {
 		// sendLock:   sync.Mutex,
 	}
 
-	marshalled, err := json.Marshal(e)
-	testOK(t, err)
+	// event
+	marshalled, _ := json.Marshal(e)
+	fmt.Println(string(marshalled))
+
+	// event.fieldholder
+	marshalled, _ = json.Marshal(e.fieldHolder)
+	fmt.Println(string(marshalled))
+
+	// event.fieldholder.data
+	marshalled, _ = json.Marshal(e.fieldHolder.data)
 	fmt.Println(string(marshalled))
 }
 
