@@ -1094,14 +1094,17 @@ func TestMarshalEvent(t *testing.T) {
 	// event
 	marshalled, _ := json.Marshal(e)
 	fmt.Println(string(marshalled))
+	// {"WriteKey":"ceb6e474a807a40b45060e50b6b1e4c0","Dataset":"traces - staging","SampleRate":1,"APIHost":"https://api.honeycomb.io","Timestamp":"0001-01-01T00:00:00Z","Metadata":null}
 
 	// event.fieldholder
 	marshalled, _ = json.Marshal(e.fieldHolder)
 	fmt.Println(string(marshalled))
+	// {}
 
 	// event.fieldholder.data
 	marshalled, _ = json.Marshal(e.fieldHolder.data)
 	fmt.Println(string(marshalled))
+	// {"duration_ms":0.369,"has_remote_parent":true,"http.host":"172.23.87.232","http.method":"GET","http.path":"/status-check","http.route":"/status-check","http.status_code":200,"http.user_agent":"kube-probe/1.16+","ip":"172.23.87.232","lock":"{w:{state:0 sema:0} writerSem:0 readerSem:0 readerCount:0 readerWait:0}","name":"/status-check","opencensus.exporter.jaeger.hostname":"my-deliveries-fragment-fragment-6dc7cff7cd-qsqmv","opencensus.exporter.jaeger.version":"opencensus-exporter-jaeger-[object Object]","release - version":"6.1984.0","service_name":"my-deliveries-fragment","source_format":"otlp_trace","status.code":0,"status.message":"OK","trace.parent_id":"8d7ab34566589fc1","trace.span_id:":"1baea5d6da1c4888","trace.trace_id:":"7d9d40b0769c19658d7ab34566589fc1"}
 }
 
 // WriteKey:ceb6e474a807a40b45060e50b6b1e4c0
