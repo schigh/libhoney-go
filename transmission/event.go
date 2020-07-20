@@ -112,6 +112,8 @@ func (m marshallableMap) MarshalJSON() ([]byte, error) {
 		}
 	}
 	out.WriteByte('}')
+	// DEBUG - print whole JSON fragment
+	fmt.Println(string(out.Bytes()))
 	return out.Bytes(), nil
 }
 
@@ -132,6 +134,8 @@ func maybeMarshalValue(v interface{}) ([]byte, bool) {
 	}
 	b, err := json.Marshal(v)
 	if err != nil {
+		// DEBUG - on error, print property type and value
+		fmt.Println("Failed to serialize property with kind", kind, "and value", v)
 		return nil, false
 	}
 	return b, true
