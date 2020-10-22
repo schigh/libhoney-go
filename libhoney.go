@@ -161,18 +161,25 @@ func Init(conf Config) error {
 	// populate a client config to spin up the default package-level Client
 	clientConf := ClientConfig{}
 
+	// populate a marker config for the package level markerClient
+	markerConf := MarkerClientConfig{}
+
 	// Use whichever one is set, but APIKey wins if both are set.
 	switch {
 	case conf.APIKey != "":
 		clientConf.APIKey = conf.APIKey
+		markerConf.APIKey = conf.APIKey
 	case conf.WriteKey != "":
 		clientConf.APIKey = conf.WriteKey
+		markerConf.APIKey = conf.APIKey
 	default:
 	}
 
 	clientConf.Dataset = conf.Dataset
+	markerConf.Dataset = conf.Dataset
 	clientConf.SampleRate = conf.SampleRate
 	clientConf.APIHost = conf.APIHost
+	markerConf.APIHost = conf.APIHost
 
 	// set up default Logger because we're going to use it for the transmission
 	if conf.Logger == nil {
@@ -222,6 +229,7 @@ func Init(conf Config) error {
 	}
 	clientConf.Transmission = t
 	var err error
+	mc = NewMarkerClient(markerConf)
 	dc, err = NewClient(clientConf)
 	return err
 }
